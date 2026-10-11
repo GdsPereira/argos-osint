@@ -1,0 +1,11 @@
+node_modules/
+.angular/
+dist/
+.git
+.gitignore
+.agents/
+.cursor/
+.claude/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

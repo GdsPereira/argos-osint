@@ -1,0 +1,38 @@
+# Git e Controle de Versão
+.git
+.gitignore
+
+# Agentes de IA e Metadados
+.agents
+.agent
+.gemini
+.antigravity
+.claude
+.cursor
+.windsurf
+scratch
+
+# Ambientes Virtuais e Dependências
+.venv
+venv
+node_modules
+
+# Caches e Compilados
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.angular
+dist
+frontend/dist
+
+# Segredos e Configurações
+.env
+.env.*
+!.env.example
+
+# Bancos de Dados Locais
+*.db
+*.sqlite
+*.sqlite3

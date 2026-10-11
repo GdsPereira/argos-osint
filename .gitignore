@@ -1,0 +1,178 @@
+# ==============================================================================
+# Git Ignore - Instagram Analytics Pro / Social Listening Suite
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. SEGURANÇA E AMBIENTE (AppSec / OWASP)
+# ------------------------------------------------------------------------------
+# Ignorar todos os arquivos de variáveis de ambiente e segredos
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+
+# Preservar arquivos de exemplo de configuração para onboarding
+!.env.example
+!backend/.env.example
+
+# ------------------------------------------------------------------------------
+# 2. AGENTES DE IA, ASSISTENTES & METADADOS LOCAIS
+# ------------------------------------------------------------------------------
+# Frameworks de Agentes e Assistentes de Código (Antigravity, Cursor, Claude, etc.)
+.agents/
+.agent/
+.antigravity/
+.gemini/
+.claude/
+.cursor/
+.windsurf/
+.continue/
+.cline/
+.copilot/
+.chat/
+.prompts/
+.aider*
+scratch/
+transcripts/
+*.transcript*
+
+# ------------------------------------------------------------------------------
+# 3. PYTHON & FASTAPI (Backend)
+# ------------------------------------------------------------------------------
+# Bytecode e caches de execução
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ambientes Virtuais Python
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Testes, Cobertura e Linters
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+nosetests.xml
+coverage.xml
+
+# Builds e Distribuições Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ------------------------------------------------------------------------------
+# 4. NODE.JS & ANGULAR 19 (Frontend)
+# ------------------------------------------------------------------------------
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Cache de compilação do Angular CLI
+.angular/
+
+# Builds de produção do Frontend
+frontend/dist/
+dist/
+out-tsc/
+bazel-out/
+
+# ------------------------------------------------------------------------------
+# 5. BANCO DE DADOS & DADOS LOCAIS (DBA & Storage)
+# ------------------------------------------------------------------------------
+# Bancos de dados locais SQLite e arquivos WAL/SHM
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+backend/insta_local.db
+
+# Diretórios de volumes locais Docker
+postgres_data/
+insta_postgres_data/
+
+# ------------------------------------------------------------------------------
+# 6. LOGS & EXPORTAÇÕES / ARQUIVOS GERADOS
+# ------------------------------------------------------------------------------
+# Arquivos de log
+*.log
+logs/
+
+# Exportações geradas por usuários (relatórios, CSVs de coleta, dumps)
+*.csv
+*.xlsx
+exports/
+reports/
+dumps/
+
+# ------------------------------------------------------------------------------
+# 7. SISTEMAS OPERACIONAIS & IDES
+# ------------------------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# IDEs (VS Code, JetBrains, editores)
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+
+# VS Code (Ignorar workspace state e histórico local)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/

@@ -1,0 +1,100 @@
+services:
+  # ========================================================
+  # Banco de Dados Relacional Resiliente (PostgreSQL 16)
+  # ========================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: insta_postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5456}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-insta_db}
+      POSTGRES_USER: ${POSTGRES_USER:-insta_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-insta_pass_2026}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - insta_postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-insta_user} -d ${POSTGRES_DB:-insta_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - insta_network
+
+  # ========================================================
+  # Serviço Backend (FastAPI + Python 3.12)
+  # ========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: insta_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-insta_user}:${POSTGRES_PASSWORD:-insta_pass_2026}@postgres:5432/${POSTGRES_DB:-insta_db}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-insta_db}
+      - POSTGRES_USER=${POSTGRES_USER:-insta_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-insta_pass_2026}
+      - APIFY_TOKEN=${APIFY_TOKEN:-}
+      - IG_TOKEN=${IG_TOKEN:-}
+      - FB_TOKEN=${FB_TOKEN:-}
+      - IG_USER_ID=${IG_USER_ID:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AI_PROVIDER=${AI_PROVIDER:-}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_BASE_URL=${AI_BASE_URL:-}
+      - APIFY_ACTOR=${APIFY_ACTOR:-apify/instagram-scraper}
+      - APIFY_COMMENTS_ACTOR=${APIFY_COMMENTS_ACTOR:-apify/instagram-comments-scraper}
+      - APIFY_STORIES_ACTOR=${APIFY_STORIES_ACTOR:-goat255/instagram-stories-highlights-scraper}
+      - APIFY_HIGHLIGHTS_ACTOR=${APIFY_HIGHLIGHTS_ACTOR:-goat255/instagram-stories-highlights-scraper}
+      - APIFY_ACTOR_TIMEOUT_SECS=${APIFY_ACTOR_TIMEOUT_SECS:-90}
+      - APIFY_TIMEOUT_SECS=${APIFY_TIMEOUT_SECS:-120}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - insta_network
+
+  # ========================================================
+  # Serviço Frontend (Angular 19 + Nginx)
+  # ========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: insta_frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - insta_network
+
+volumes:
+  insta_postgres_data:
+    driver: local
+
+networks:
+  insta_network:
+    driver: bridge
