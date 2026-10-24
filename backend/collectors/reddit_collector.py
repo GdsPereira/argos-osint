@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.reddit")
+logger = logging.getLogger("argos.collectors.reddit")
 
 APIFY_ACTOR_REDDIT = os.getenv("APIFY_REDDIT_ACTOR", "trudax/reddit-scraper-lite")
 

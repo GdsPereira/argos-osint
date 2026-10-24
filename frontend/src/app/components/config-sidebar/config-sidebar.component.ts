@@ -17,7 +17,7 @@ import { IconComponent } from '../ui/icon/icon.component';
             <app-icon name="instagram" [size]="20" [strokeWidth]="2"></app-icon>
           </div>
           <div class="brand-text">
-            <span class="brand-title">Insta Analyzer</span>
+            <span class="brand-title">Argos</span>
             <span class="version-tag">Intelligence Pro</span>
           </div>
         </div>

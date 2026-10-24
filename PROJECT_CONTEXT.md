@@ -1,4 +1,4 @@
-# 📖 PROJECT_CONTEXT.md - Instagram Analytics Pro & Social Listening Transmídia
+# 📖 PROJECT_CONTEXT.md - Argos & Social Listening Transmídia
 
 > **Documento de Contexto Vivo e Onboarding Rápido.**
 > Use este arquivo como mapa mental e base técnica para entender instantaneamente o funcionamento do projeto e implementar novas funcionalidades com máxima produtividade e zero atrito.
@@ -7,9 +7,9 @@
 
 ## 1. 🎯 Visão Geral do Produto
 
-O **Instagram Analytics Pro** é uma plataforma analítica e de inteligência de marketing de alto desempenho que evoluiu de um protótipo em Streamlit para uma arquitetura moderna e escalável:
+O **Argos** é uma plataforma analítica e de inteligência OSINT / Social Listening de alto desempenho:
 - **Backend:** FastAPI (Python 3.12 assíncrono), AnyIO, Pydantic v2, PostgreSQL (com fallback automático para SQLite) e orquestração de jobs em background.
-- **Frontend:** Angular 19 (Standalone Components, Signals, RxJS, Chart.js 4, Dark Theme responsivo com visual gradiente Instagram).
+- **Frontend:** Angular 19 (Standalone Components, Signals, RxJS, Chart.js 4, Dark Theme responsivo com visual gradiente moderno).
 - **Motores de Coleta:**
   1. **Instagram Profundo:** Apify Actors (Multi-Actor paralelo para perfil, posts, comentários e stories), Meta Graph API Oficial (métricas privadas de 30 dias e Discovery de concorrentes) e Instaloader.
   2. **Social Listening Transmídia:** YouTube (scrapetube ultrarrápido sem cota de API), Reddit (JSON endpoints sem autenticação), TikTok & Threads (impersonação de TLS Chrome via `curl_cffi` para contornar proteções Cloudflare), Twitter/X e Instagram agregados.

@@ -4,35 +4,35 @@ services:
   # ========================================================
   postgres:
     image: postgres:16-alpine
-    container_name: insta_postgres
+    container_name: argos_postgres
     restart: unless-stopped
     ports:
       - "${POSTGRES_PORT:-5456}:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-insta_db}
-      POSTGRES_USER: ${POSTGRES_USER:-insta_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-insta_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-argos_db}
+      POSTGRES_USER: ${POSTGRES_USER:-argos_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-argos_pass_2026}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - insta_postgres_data:/var/lib/postgresql/data
+      - argos_postgres_data:/var/lib/postgresql/data
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-insta_user} -d ${POSTGRES_DB:-insta_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-argos_user} -d ${POSTGRES_DB:-argos_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
     networks:
-      - insta_network
+      - argos_network
 
   # ========================================================
-  # Serviço Backend (FastAPI + Python 3.12)
+  # Serviço Backend Argos OSINT (FastAPI + Python 3.12)
   # ========================================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: insta_backend
+    container_name: argos_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -40,28 +40,23 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-insta_user}:${POSTGRES_PASSWORD:-insta_pass_2026}@postgres:5432/${POSTGRES_DB:-insta_db}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-argos_user}:${POSTGRES_PASSWORD:-argos_pass_2026}@postgres:5432/${POSTGRES_DB:-argos_db}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-insta_db}
-      - POSTGRES_USER=${POSTGRES_USER:-insta_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-insta_pass_2026}
-      - APIFY_TOKEN=${APIFY_TOKEN:-}
-      - IG_TOKEN=${IG_TOKEN:-}
-      - FB_TOKEN=${FB_TOKEN:-}
-      - IG_USER_ID=${IG_USER_ID:-}
+      - POSTGRES_DB=${POSTGRES_DB:-argos_db}
+      - POSTGRES_USER=${POSTGRES_USER:-argos_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-argos_pass_2026}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - AI_PROVIDER=${AI_PROVIDER:-}
       - AI_MODEL=${AI_MODEL:-}
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_BASE_URL=${AI_BASE_URL:-}
-      - APIFY_ACTOR=${APIFY_ACTOR:-apify/instagram-scraper}
-      - APIFY_COMMENTS_ACTOR=${APIFY_COMMENTS_ACTOR:-apify/instagram-comments-scraper}
-      - APIFY_STORIES_ACTOR=${APIFY_STORIES_ACTOR:-goat255/instagram-stories-highlights-scraper}
-      - APIFY_HIGHLIGHTS_ACTOR=${APIFY_HIGHLIGHTS_ACTOR:-goat255/instagram-stories-highlights-scraper}
-      - APIFY_ACTOR_TIMEOUT_SECS=${APIFY_ACTOR_TIMEOUT_SECS:-90}
-      - APIFY_TIMEOUT_SECS=${APIFY_TIMEOUT_SECS:-120}
+      - APIFY_TOKEN=${APIFY_TOKEN:-}
+      - IG_TOKEN=${IG_TOKEN:-}
+      - FB_TOKEN=${FB_TOKEN:-}
+      - IG_USER_ID=${IG_USER_ID:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/config"]
       interval: 30s
@@ -72,16 +67,16 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - insta_network
+      - argos_network
 
   # ========================================================
-  # Serviço Frontend (Angular 19 + Nginx)
+  # Serviço Frontend Argos OSINT (Angular 19 + Nginx)
   # ========================================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: insta_frontend
+    container_name: argos_frontend
     restart: unless-stopped
     ports:
       - "4200:80"
@@ -89,12 +84,12 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - insta_network
+      - argos_network
 
 volumes:
-  insta_postgres_data:
+  argos_postgres_data:
     driver: local
 
 networks:
-  insta_network:
+  argos_network:
     driver: bridge

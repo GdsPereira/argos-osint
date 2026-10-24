@@ -369,3 +369,73 @@ def test_proxy_video_streaming_mocked(client):
         assert resp.headers.get("accept-ranges") == "bytes"
         assert resp.content == b"fake_video_bytes_chunk_1fake_video_bytes_chunk_2"
 
+
+def test_osint_classify_input_types():
+    from collectors.osint_collector import OsintCollector
+
+    c_email = OsintCollector.classify_input("security@nasa.gov")
+    assert c_email["entity_type"] == "email"
+    assert c_email["pivot_username"] == "security"
+    assert c_email["pivot_domain"] == "nasa.gov"
+
+    c_phone = OsintCollector.classify_input("+55 11 98765-4321")
+    assert c_phone["entity_type"] == "phone"
+    assert c_phone["normalized"] == "+5511987654321"
+
+    c_domain = OsintCollector.classify_input("nasa.gov")
+    assert c_domain["entity_type"] == "domain"
+    assert c_domain["pivot_domain"] == "nasa.gov"
+
+    c_url = OsintCollector.classify_input("https://linktr.ee/natgeo")
+    assert c_url["entity_type"] == "url"
+    assert c_url["pivot_domain"] == "linktr.ee"
+
+    c_user = OsintCollector.classify_input("@torvalds")
+    assert c_user["entity_type"] == "username"
+    assert c_user["normalized"] == "torvalds"
+
+    c_cnpj = OsintCollector.classify_input("00.000.000/0001-91")
+    assert c_cnpj["entity_type"] == "cnpj"
+    assert c_cnpj["normalized"] == "00000000000191"
+
+    c_cpf = OsintCollector.classify_input("123.456.789-00")
+    assert c_cpf["entity_type"] == "cpf"
+    assert c_cpf["normalized"] == "12345678900"
+
+    c_ip = OsintCollector.classify_input("8.8.8.8")
+    assert c_ip["entity_type"] == "ip"
+    assert c_ip["normalized"] == "8.8.8.8"
+
+    c_br = OsintCollector.classify_input("petrobras.com.br")
+    assert c_br["entity_type"] == "domain"
+    assert c_br["is_br_domain"] is True
+    assert "rdap_registro_br" in c_br["transforms"]
+
+    c_entity = OsintCollector.classify_input("Linus Torvalds")
+    assert c_entity["entity_type"] == "entity"
+
+
+def test_osint_omni_search_and_phone_endpoints(client):
+    with patch("collectors.osint_collector.OsintCollector.search_dork", new=AsyncMock(return_value=[])):
+        resp_phone = client.post("/api/argos/phone-footprint", json={"phone": "+55 11 98765-4321"})
+        assert resp_phone.status_code == 200
+        phone_data = resp_phone.json()
+        assert phone_data["e164"] == "+5511987654321"
+        assert phone_data["ddd"] == "11"
+        assert "SP" in (phone_data["region"] or "")
+        assert len(phone_data["messaging_apps"]) >= 2
+
+        resp_omni = client.post("/api/argos/omni-search", json={"query": "+55 11 98765-4321"})
+        assert resp_omni.status_code == 200
+        omni_data = resp_omni.json()
+        assert omni_data["classification"]["entity_type"] == "phone"
+        assert "entity_graph" in omni_data
+        assert omni_data["entity_graph"]["stats"]["total_nodes"] >= 2
+        assert "sha256_hash" in omni_data
+
+        # Verifica listagem de casos OSINT persistidos
+        resp_cases = client.get("/api/argos/cases")
+        assert resp_cases.status_code == 200
+        assert isinstance(resp_cases.json(), list)
+
+

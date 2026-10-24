@@ -14,7 +14,7 @@ import scrapetube
 
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.youtube")
+logger = logging.getLogger("argos.collectors.youtube")
 
 
 def parse_view_count(view_text: Optional[str]) -> int:

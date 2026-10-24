@@ -16,7 +16,16 @@ import {
   UsernameScanRequest,
   UsernameScanResponse,
   OsintDossierRequest,
-  OsintDossierResponse
+  OsintDossierResponse,
+  DomainIntelResponse,
+  SubdomainEnumResponse,
+  EmailFootprintResponse,
+  ArchiveLookupResponse,
+  EntityGraphData,
+  ArgosAiAssessmentResponse,
+  OmniSearchResponse,
+  PhoneFootprintResponse,
+  OsintCaseSummary,
 } from '../models/osint.model';
 
 @Injectable({
@@ -100,6 +109,12 @@ export class ApiService {
     );
   }
 
+  getReportAiDossiers(reportId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/reports/${reportId}/ai`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
   deleteReport(id: string): Observable<{ id: string; deleted: boolean }> {
     return this.http.delete<{ id: string; deleted: boolean }>(`${this.baseUrl}/reports/${id}`).pipe(
       catchError(this.handleError)
@@ -175,7 +190,89 @@ export class ApiService {
   }
 
   generateOsintDossier(payload: OsintDossierRequest): Observable<OsintDossierResponse> {
-    return this.http.post<OsintDossierResponse>(`${this.baseUrl}/osint/dossier`, payload).pipe(
+    return this.http.post<OsintDossierResponse>(`${this.baseUrl}/argos/dossier`, payload).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  inspectDomain(domain: string): Observable<DomainIntelResponse> {
+    return this.http.post<DomainIntelResponse>(`${this.baseUrl}/argos/domain-inspect`, { domain }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  enumerateSubdomains(domain: string, limit = 40): Observable<SubdomainEnumResponse> {
+    return this.http.post<SubdomainEnumResponse>(`${this.baseUrl}/argos/subdomain-enum`, { domain, limit }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  scanEmailFootprint(email: string): Observable<EmailFootprintResponse> {
+    return this.http.post<EmailFootprintResponse>(`${this.baseUrl}/argos/email-footprint`, { email }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  lookupArchive(url: string, limit = 12): Observable<ArchiveLookupResponse> {
+    return this.http.post<ArchiveLookupResponse>(`${this.baseUrl}/argos/archive-lookup`, { url, limit }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  generateEntityGraph(dossier: any): Observable<EntityGraphData> {
+    return this.http.post<EntityGraphData>(`${this.baseUrl}/argos/entity-graph`, { dossier }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getArgosAiAssessment(payload: { dossier: any; provider?: string; model?: string; token?: string; fallback_token?: string }): Observable<ArgosAiAssessmentResponse> {
+    return this.http.post<ArgosAiAssessmentResponse>(`${this.baseUrl}/argos/ai-assessment`, payload).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  omniSearch(query: string, caseId?: string, autoSave = true): Observable<OmniSearchResponse> {
+    return this.http.post<OmniSearchResponse>(`${this.baseUrl}/argos/omni-search`, {
+      query,
+      case_id: caseId,
+      auto_save: autoSave,
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  scanPhoneFootprint(phone: string): Observable<PhoneFootprintResponse> {
+    return this.http.post<PhoneFootprintResponse>(`${this.baseUrl}/argos/phone-footprint`, { phone }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  listOsintCases(limit = 30): Observable<OsintCaseSummary[]> {
+    return this.http.get<OsintCaseSummary[]>(`${this.baseUrl}/argos/cases?limit=${limit}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getOsintCaseById(caseId: string): Observable<OmniSearchResponse> {
+    return this.http.get<OmniSearchResponse>(`${this.baseUrl}/argos/cases/${encodeURIComponent(caseId)}`).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  saveOsintCase(payload: {
+    case_id?: string;
+    title?: string;
+    pivots_trail?: string[];
+    analyst_notes?: string;
+    case_data: any;
+  }): Observable<OsintCaseSummary> {
+    return this.http.post<OsintCaseSummary>(`${this.baseUrl}/argos/cases`, payload).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  deleteOsintCase(caseId: string): Observable<{ id: string; deleted: boolean }> {
+    return this.http.delete<{ id: string; deleted: boolean }>(`${this.baseUrl}/argos/cases/${encodeURIComponent(caseId)}`).pipe(
       catchError(this.handleError)
     );
   }

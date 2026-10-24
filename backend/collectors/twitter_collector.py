@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.twitter")
+logger = logging.getLogger("argos.collectors.twitter")
 
 APIFY_ACTOR_TWITTER = os.getenv("APIFY_TWITTER_ACTOR", "apidojo/tweet-scraper")
 

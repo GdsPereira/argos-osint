@@ -22,7 +22,7 @@ from collectors.twitter_collector import TwitterCollector
 from collectors.youtube_collector import YouTubeCollector
 from collectors.osint_collector import OsintCollector
 
-logger = logging.getLogger("insta_analyzer.collectors.manager")
+logger = logging.getLogger("argos.collectors.manager")
 
 
 class MultiPlatformManager:

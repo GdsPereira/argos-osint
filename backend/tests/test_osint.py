@@ -161,3 +161,53 @@ def test_api_osint_dossier_endpoint(client):
         data = resp.json()
         assert data["target"] == "marca_teste"
         assert data["total_web_mentions"] == 1
+
+
+def test_api_argos_domain_inspect_endpoint(client):
+    """Testa a rota POST /api/argos/domain-inspect."""
+    mock_domain = {
+        "domain": "target.com",
+        "dns": {"A": ["93.184.216.34"]},
+        "ssl_certificate": {"valid": True, "subject_alt_names": ["target.com", "api.target.com"]},
+        "status": "success",
+    }
+    with patch.object(OsintCollector, "inspect_domain", return_value=mock_domain):
+        resp = client.post("/api/argos/domain-inspect", json={"domain": "target.com"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["domain"] == "target.com"
+        assert "dns" in data
+
+
+def test_api_argos_email_footprint_endpoint(client):
+    """Testa a rota POST /api/argos/email-footprint."""
+    mock_email = {
+        "email": "investigative@alvo.com",
+        "total_checked": 3,
+        "total_found": 1,
+        "found": [{"service": "GitHub", "exists": True}],
+    }
+    with patch.object(OsintCollector, "scan_email_footprint", return_value=mock_email):
+        resp = client.post("/api/argos/email-footprint", json={"email": "investigative@alvo.com"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email"] == "investigative@alvo.com"
+        assert data["total_found"] == 1
+
+
+def test_api_argos_entity_graph_endpoint(client):
+    """Testa a rota POST /api/argos/entity-graph gerando nós e arestas."""
+    sample_dossier = {
+        "target": "target_user",
+        "digital_footprint": {"found": [{"platform": "github", "name": "GitHub", "category": "tech"}]},
+        "bio_intelligence": {"final_url": "https://target.com", "socials": []},
+        "web_mentions": [],
+    }
+    resp = client.post("/api/argos/entity-graph", json={"dossier": sample_dossier})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["target"] == "target_user"
+    assert "nodes" in data
+    assert "edges" in data
+    assert len(data["nodes"]) >= 2
+

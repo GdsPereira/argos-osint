@@ -9,7 +9,7 @@ from typing import Optional
 import collector_apify as ca
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.instagram")
+logger = logging.getLogger("argos.collectors.instagram")
 
 
 class InstagramCollector:

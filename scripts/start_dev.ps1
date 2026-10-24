@@ -14,7 +14,7 @@ if (-not (Test-Path $pythonExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  Instagram Analytics Pro - Servidores de Desenvolvimento " -ForegroundColor Cyan
+Write-Host "  Argos OSINT - Servidores de Desenvolvimento              " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 if ($Service -eq "backend" -or $Service -eq "all") {

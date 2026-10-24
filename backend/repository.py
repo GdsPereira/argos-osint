@@ -13,7 +13,7 @@ from sqlalchemy import delete, desc, select
 from database import get_db_session
 from models import AiReportModel, AnalysisModel, JobModel
 
-logger = logging.getLogger("insta_analyzer.repository")
+logger = logging.getLogger("argos.repository")
 
 
 async def save_analysis(analysis_data: dict[str, Any], job_id: Optional[str] = None) -> Optional[str]:
@@ -66,14 +66,28 @@ async def save_analysis(analysis_data: dict[str, Any], job_id: Optional[str] = N
 
 
 async def get_analysis_by_id(analysis_id: str) -> Optional[dict[str, Any]]:
-    """Recupera a análise completa pelo ID."""
+    """Recupera a análise completa pelo ID, incluindo o último dossiê de IA se existir."""
     try:
         async with get_db_session() as session:
             stmt = select(AnalysisModel).where(AnalysisModel.id == analysis_id)
             result = await session.execute(stmt)
             obj = result.scalar_one_or_none()
             if obj:
-                return obj.to_full_dict()
+                full_dict = obj.to_full_dict()
+                ai_stmt = (
+                    select(AiReportModel)
+                    .where(
+                        (AiReportModel.analysis_id == analysis_id)
+                        | (AiReportModel.username == obj.username)
+                    )
+                    .order_by(desc(AiReportModel.created_at))
+                    .limit(1)
+                )
+                ai_res = await session.execute(ai_stmt)
+                latest_ai = ai_res.scalar_one_or_none()
+                if latest_ai and latest_ai.diagnosis_data:
+                    full_dict["ai_report"] = latest_ai.diagnosis_data
+                return full_dict
     except Exception as exc:
         logger.error(f"Erro ao recuperar análise {analysis_id}: {exc}", exc_info=True)
     return None
@@ -146,14 +160,28 @@ async def save_ai_report(
 
 
 async def list_ai_reports_for_analysis(analysis_id: str) -> list[dict[str, Any]]:
-    """Lista relatórios de IA vinculados a uma análise."""
+    """Lista relatórios de IA vinculados a uma análise (ou pelo username correspondente)."""
     try:
         async with get_db_session() as session:
-            stmt = (
-                select(AiReportModel)
-                .where(AiReportModel.analysis_id == analysis_id)
-                .order_by(desc(AiReportModel.created_at))
-            )
+            anl_stmt = select(AnalysisModel.username).where(AnalysisModel.id == analysis_id)
+            anl_res = await session.execute(anl_stmt)
+            username = anl_res.scalar_one_or_none()
+
+            if username:
+                stmt = (
+                    select(AiReportModel)
+                    .where(
+                        (AiReportModel.analysis_id == analysis_id)
+                        | (AiReportModel.username == username)
+                    )
+                    .order_by(desc(AiReportModel.created_at))
+                )
+            else:
+                stmt = (
+                    select(AiReportModel)
+                    .where(AiReportModel.analysis_id == analysis_id)
+                    .order_by(desc(AiReportModel.created_at))
+                )
             result = await session.execute(stmt)
             return [row.to_dict() for row in result.scalars().all()]
     except Exception as exc:
@@ -315,4 +343,129 @@ async def save_omnichannel_report(
     except Exception as exc:
         logger.error(f"Erro ao salvar relatório omnichannel: {exc}", exc_info=True)
         return None
+
+
+async def upsert_osint_case(
+    case_data: dict[str, Any],
+    case_id: Optional[str] = None,
+    title: Optional[str] = None,
+    pivots_trail: Optional[list[str]] = None,
+    analyst_notes: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
+    """Persiste ou atualiza um Caso de Investigação OSINT no PostgreSQL com Hash SHA-256 Forense."""
+    import hashlib
+    import json
+    from models import OsintCaseModel
+
+    try:
+        cid = case_id or case_data.get("case_id") or f"case_{uuid.uuid4().hex[:12]}"
+        root_q = str(case_data.get("query") or case_data.get("target") or "Alvo OSINT")
+        etype = str(case_data.get("entity_type") or "entity")
+        graph = case_data.get("entity_graph") or {}
+        total_nodes = int(graph.get("total_nodes") or len(graph.get("nodes") or []))
+        total_edges = int(graph.get("total_edges") or len(graph.get("edges") or []))
+        trail = pivots_trail or case_data.get("pivots_trail") or [root_q]
+
+        custody_raw = json.dumps(
+            {
+                "case_id": cid,
+                "root_query": root_q,
+                "trail": trail,
+                "total_nodes": total_nodes,
+                "total_edges": total_edges,
+                "notes": analyst_notes or "",
+            },
+            sort_keys=True,
+        )
+        sha256_hash = hashlib.sha256(custody_raw.encode("utf-8")).hexdigest()
+        case_data["case_id"] = cid
+        case_data["sha256_hash"] = sha256_hash
+        case_data["pivots_trail"] = trail
+        if analyst_notes is not None:
+            case_data["analyst_notes"] = analyst_notes
+
+        async with get_db_session() as session:
+            stmt = select(OsintCaseModel).where(OsintCaseModel.id == cid)
+            res = await session.execute(stmt)
+            existing = res.scalar_one_or_none()
+
+            if existing:
+                existing.root_query = root_q
+                existing.entity_type = etype
+                if title:
+                    existing.title = title
+                existing.pivots_trail = trail
+                existing.total_nodes = total_nodes
+                existing.total_edges = total_edges
+                existing.sha256_hash = sha256_hash
+                if analyst_notes is not None:
+                    existing.analyst_notes = analyst_notes
+                existing.case_data = case_data
+                await session.commit()
+                await session.refresh(existing)
+                return existing.to_summary_dict()
+            else:
+                new_case = OsintCaseModel(
+                    id=cid,
+                    root_query=root_q,
+                    entity_type=etype,
+                    title=title or f"Investigação: {root_q}",
+                    pivots_trail=trail,
+                    total_nodes=total_nodes,
+                    total_edges=total_edges,
+                    sha256_hash=sha256_hash,
+                    analyst_notes=analyst_notes,
+                    case_data=case_data,
+                )
+                session.add(new_case)
+                await session.commit()
+                await session.refresh(new_case)
+                return new_case.to_summary_dict()
+    except Exception as exc:
+        logger.error(f"Erro ao persistir Caso OSINT no PostgreSQL: {exc}", exc_info=True)
+        return None
+
+
+async def list_osint_cases(limit: int = 30) -> list[dict[str, Any]]:
+    """Lista os Casos de Investigação OSINT salvos no PostgreSQL."""
+    from models import OsintCaseModel
+    try:
+        async with get_db_session() as session:
+            stmt = select(OsintCaseModel).order_by(desc(OsintCaseModel.updated_at)).limit(limit)
+            res = await session.execute(stmt)
+            rows = res.scalars().all()
+            return [r.to_summary_dict() for r in rows]
+    except Exception as exc:
+        logger.error(f"Erro ao listar Casos OSINT: {exc}", exc_info=True)
+        return []
+
+
+async def get_osint_case_by_id(case_id: str) -> Optional[dict[str, Any]]:
+    """Recupera um Caso de Investigação OSINT completo pelo ID."""
+    from models import OsintCaseModel
+    try:
+        async with get_db_session() as session:
+            stmt = select(OsintCaseModel).where(OsintCaseModel.id == case_id)
+            res = await session.execute(stmt)
+            obj = res.scalar_one_or_none()
+            if obj:
+                return obj.to_full_dict()
+    except Exception as exc:
+        logger.error(f"Erro ao recuperar Caso OSINT {case_id}: {exc}", exc_info=True)
+    return None
+
+
+async def delete_osint_case(case_id: str) -> bool:
+    """Remove um Caso de Investigação OSINT do PostgreSQL."""
+    from models import OsintCaseModel
+    try:
+        async with get_db_session() as session:
+            stmt = delete(OsintCaseModel).where(OsintCaseModel.id == case_id)
+            res = await session.execute(stmt)
+            await session.commit()
+            return res.rowcount > 0
+    except Exception as exc:
+        logger.error(f"Erro ao excluir Caso OSINT {case_id}: {exc}", exc_info=True)
+        return False
+
 

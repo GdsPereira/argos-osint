@@ -1,5 +1,5 @@
 -- ========================================================
--- Schema do PostgreSQL para Resiliência do Insta Analyzer
+-- Schema do PostgreSQL para Resiliência do Argos
 -- Tabelas: analyses, ai_reports, jobs
 -- ========================================================
 
@@ -94,4 +94,27 @@ CREATE TABLE IF NOT EXISTS omnichannel_reports (
 
 CREATE INDEX IF NOT EXISTS idx_omnichannel_reports_search_id ON omnichannel_reports(search_run_id);
 CREATE INDEX IF NOT EXISTS idx_omnichannel_reports_created_at ON omnichannel_reports(created_at DESC);
+
+-- ========================================================
+-- Casos de Investigação OSINT (Maltego Mode & Cadeia de Custódia)
+-- ========================================================
+
+CREATE TABLE IF NOT EXISTS osint_cases (
+    id VARCHAR(64) PRIMARY KEY,
+    root_query VARCHAR(255) NOT NULL,
+    entity_type VARCHAR(64) NOT NULL DEFAULT 'username',
+    title VARCHAR(255) NOT NULL,
+    pivots_trail JSONB NOT NULL DEFAULT '[]'::jsonb,
+    total_nodes INTEGER DEFAULT 0,
+    total_edges INTEGER DEFAULT 0,
+    sha256_hash VARCHAR(64) NOT NULL DEFAULT '',
+    analyst_notes TEXT DEFAULT '',
+    case_data JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_osint_cases_root_query ON osint_cases(root_query);
+CREATE INDEX IF NOT EXISTS idx_osint_cases_updated_at ON osint_cases(updated_at DESC);
+
 

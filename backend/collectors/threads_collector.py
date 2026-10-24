@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.threads")
+logger = logging.getLogger("argos.collectors.threads")
 
 APIFY_ACTOR_THREADS = os.getenv("APIFY_THREADS_ACTOR", "barvian/threads-scraper")
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
@@ -61,10 +61,10 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
         <header class="app-header">
           <div class="header-left">
             <div class="header-brand-pill">
-              <app-icon name="sparkles" [size]="14" customClass="icon-ig-gradient"></app-icon>
-              <span>Social Intelligence & OSINT Suite</span>
+              <app-icon name="shield" [size]="14" customClass="icon-gradient"></app-icon>
+              <span>Argos OSINT • Panoptes Intelligence Suite</span>
             </div>
-            <h1 class="header-title">{{ mainAppMode === 'multi' ? 'Social Listening Transmídia' : (mainAppMode === 'osint' ? 'Investigação Digital & OSINT' : 'Instagram Profile Intelligence') }}</h1>
+            <h1 class="header-title">{{ mainAppMode === 'multi' ? 'Social Listening Transmídia' : (mainAppMode === 'osint' ? 'Argos OSINT — Investigação Digital & Link Analysis' : 'Instagram Profile Intelligence') }}</h1>
           </div>
 
           <!-- Mode Switcher Tabs -->
@@ -72,11 +72,18 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
             <div class="main-mode-switcher">
               <button 
                 class="mode-switch-btn" 
+                [class.active]="mainAppMode === 'osint'" 
+                (click)="switchMode('osint')">
+                <app-icon name="shield" [size]="15"></app-icon>
+                <span>Argos OSINT (Omni-Hunter)</span>
+                <span class="badge-mode-new">MALTEGO</span>
+              </button>
+              <button 
+                class="mode-switch-btn" 
                 [class.active]="mainAppMode === 'multi'" 
                 (click)="switchMode('multi')">
                 <app-icon name="globe" [size]="15"></app-icon>
                 <span>Social Listening Multi-Rede</span>
-                <span class="badge-mode-new">NOVO</span>
               </button>
               <button 
                 class="mode-switch-btn" 
@@ -84,14 +91,6 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
                 (click)="switchMode('instagram')">
                 <app-icon name="instagram" [size]="15"></app-icon>
                 <span>Instagram Profile Pro</span>
-              </button>
-              <button 
-                class="mode-switch-btn" 
-                [class.active]="mainAppMode === 'osint'" 
-                (click)="switchMode('osint')">
-                <app-icon name="shield" [size]="15"></app-icon>
-                <span>OSINT & Dorks</span>
-                <span class="badge-mode-new">OPEN SOURCE</span>
               </button>
             </div>
           </div>
@@ -440,7 +439,7 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
                   <app-icon [name]="copiedLogs ? 'check' : 'copy'" [size]="14"></app-icon>
                   <span>{{ copiedLogs ? 'Copiado!' : 'Copiar Logs' }}</span>
                 </button>
-                <button class="modal-close-btn" (click)="showLogsModal = false">
+                <button class="modal-close-btn" (click)="showLogsModal = false" aria-label="Fechar console de logs">
                   <app-icon name="x" [size]="16"></app-icon>
                 </button>
               </div>
@@ -471,7 +470,7 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
                   <app-icon name="refresh-cw" [size]="14"></app-icon>
                   <span>Atualizar</span>
                 </button>
-                <button class="modal-close-btn" (click)="showReportsModal = false">
+                <button class="modal-close-btn" (click)="showReportsModal = false" aria-label="Fechar histórico de relatórios">
                   <app-icon name="x" [size]="16"></app-icon>
                 </button>
               </div>
@@ -524,7 +523,7 @@ type MainAppMode = 'multi' | 'instagram' | 'osint';
                       <app-icon name="play" [size]="12"></app-icon>
                       <span>Carregar</span>
                     </button>
-                    <button class="btn btn-sm btn-outline btn-delete-rep" (click)="deleteSavedReport(rep.id, $event)" title="Excluir do banco">
+                    <button class="btn btn-sm btn-outline btn-delete-rep" (click)="deleteSavedReport(rep.id, $event)" title="Excluir do banco" aria-label="Excluir relatório do banco">
                       <app-icon name="x" [size]="14"></app-icon>
                     </button>
                   </div>
@@ -1176,7 +1175,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly titleService = inject(Title);
 
-  mainAppMode: MainAppMode = 'multi';
+  mainAppMode: MainAppMode = 'osint';
   isLoading = false;
   loadingStatusText: string | null = null;
   activeJobId: string | null = null;
@@ -1228,9 +1227,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   updateDocumentTitle(): void {
     if (this.mainAppMode === 'instagram' && this.analysis?.info?.username) {
-      this.titleService.setTitle(`@${this.analysis.info.username} | argos-osint`);
+      this.titleService.setTitle(`@${this.analysis.info.username} | Argos`);
     } else {
-      this.titleService.setTitle('argos-osint');
+      this.titleService.setTitle('Argos');
     }
   }
 
@@ -1252,13 +1251,27 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    if (this.showLogsModal) {
+      this.showLogsModal = false;
+    }
+    if (this.showReportsModal) {
+      this.showReportsModal = false;
+    }
+  }
+
   loadSavedReport(reportId: string): void {
+    this.mainAppMode = 'instagram';
     this.isLoading = true;
     this.loadingStatusText = 'Carregando análise persistida do PostgreSQL...';
     this.showReportsModal = false;
     this.api.getReportById(reportId).subscribe({
       next: (res) => {
         this.analysis = res;
+        if ((res as any)?.ai_report) {
+          this.activeTab = 'ai';
+        }
         this.isLoading = false;
         this.loadingStatusText = null;
         this.errorMessage = null;

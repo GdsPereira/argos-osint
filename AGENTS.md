@@ -1,4 +1,4 @@
-# Multi-Agent Architecture & Project Guidelines - Instagram Analytics Pro
+# Multi-Agent Architecture & Project Guidelines - Argos
 
 Este documento define o ecossistema completo de agentes especializados, suas responsabilidades, padrões de engenharia e fluxos de cooperação para evolução contínua do projeto.
 
@@ -14,7 +14,7 @@ Este documento define o ecossistema completo de agentes especializados, suas res
 | **`social-intelligence-expert`** | **SOCIAL & IA**| Social Listening Multi-Rede, Bypassing & IA | Scrapetube, curl_cffi (TLS Impersonation), Gemini, Groq. |
 | **`security-officer`** | **SECURITY** | AppSec Defensivo, OWASP Top 10 & Gestão de Chaves | Mascaramento de tokens, CSP headers, sanitização XSS/SSRF. |
 | **`pentester-red-team`** | **PENTESTER** | Segurança Ofensiva, Fuzzing & Red Team | Testes de injeção, fuzzing de payloads, IDOR, abusos de cota. |
-| **`ui-ux-specialist`** | **UI & UX** | Design System Instagram Dark, Heurísticas & A11y | Dark Theme (#0f172a/#1e293b), WCAG 2.1 AA, Nielsen, Chart.js UX. |
+| **`ui-ux-specialist`** | **UI & UX** | Design System Argos Dark, Heurísticas & A11y | Dark Theme (#0f172a/#1e293b), WCAG 2.1 AA, Nielsen, Chart.js UX. |
 | **`database-administrator`** | **DBA** | Modelagem Relacional/JSONB, Índices & Tuning | PostgreSQL 16, SQLite WAL, asyncpg pool, índices B-Tree/GIN. |
 | **`infra-devops`** | **INFRA** | Containers, Docker Compose, Nginx & Deploy | Docker Compose, Nginx Alpine, Multi-stage builds, Healthchecks. |
 | **`qa-test-runner`** | **QA** | Testes Automatizados, Blindagem & CI | pytest, pytest-asyncio, HTTPX TestClient, npm run build. |
@@ -33,7 +33,7 @@ Este documento define o ecossistema completo de agentes especializados, suas res
 
 ### 3. `ui-ux-specialist` (Design System & Usabilidade)
 - **Foco:** Experiência de uso fluida, moderna, de alto impacto visual e acessível.
-- **Regras:** Manter paleta Instagram Dark (#0f172a, #1e293b, gradientes), feedback visual para todas as ações e respeito às 10 Heurísticas de Nielsen.
+- **Regras:** Manter paleta Argos Dark (#0f172a, #1e293b, gradientes), feedback visual para todas as ações e respeito às 10 Heurísticas de Nielsen.
 
 ### 4. `pentester-red-team` (Offensive Security)
 - **Foco:** Identificar ativamente falhas antes que cheguem à produção.

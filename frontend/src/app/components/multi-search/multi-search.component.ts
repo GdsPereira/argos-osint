@@ -436,7 +436,13 @@ interface PlatformOption {
                 <div class="score-badge">Diagnóstico Executivo Transmídia</div>
                 <p class="score-rationale">{{ aiReport.score_rationale }}</p>
                 <div class="executive-summary-text">
-                  <p>{{ aiReport.executive_summary }}</p>
+                  <div class="exec-omni-block" *ngFor="let block of formatAiNarrative(aiReport.executive_summary)">
+                    <div class="exec-omni-header" *ngIf="block.badge || block.title">
+                      <span class="exec-omni-badge" *ngIf="block.badge">{{ block.badge }}</span>
+                      <strong class="exec-omni-title" *ngIf="block.title">{{ block.title }}</strong>
+                    </div>
+                    <p [innerHTML]="block.html"></p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1398,8 +1404,27 @@ interface PlatformOption {
 
     .score-content { flex: 1; }
     .score-badge { font-size: 0.72rem; font-weight: 700; color: #818cf8; text-transform: uppercase; margin-bottom: 0.3rem; }
-    .score-rationale { font-size: 0.85rem; color: #cbd5e1; font-style: italic; margin-bottom: 0.6rem; }
-    .executive-summary-text p { color: #94a3b8; font-size: 0.88rem; line-height: 1.5; margin: 0; }
+    .score-rationale { font-size: 0.85rem; color: #cbd5e1; font-style: italic; margin-bottom: 0.75rem; }
+    .executive-summary-text { display: flex; flex-direction: column; gap: 0.65rem; }
+    .exec-omni-block {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-left: 3px solid #6366f1;
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+    }
+    .exec-omni-block:nth-child(2) { border-left-color: #38bdf8; }
+    .exec-omni-header { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.3rem; }
+    .exec-omni-badge {
+      font-size: 0.66rem;
+      font-weight: 800;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+    .exec-omni-title { font-size: 0.8rem; color: #f8fafc; }
+    .executive-summary-text p { color: #cbd5e1; font-size: 0.86rem; line-height: 1.65; margin: 0; }
 
     .ai-section-box {
       background: #131d2e;
@@ -1882,9 +1907,66 @@ export class MultiSearchComponent implements OnInit, OnDestroy {
   formatChatText(content: string): string {
     if (!content) return '';
     return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f8fafc">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br>');
+  }
+
+  formatAiNarrative(rawText: string | undefined | null): Array<{ badge?: string; title?: string; html: string }> {
+    if (!rawText || !rawText.trim()) return [];
+    const normalized = rawText.replace(/\\n/g, '\n').trim();
+
+    let segments = normalized
+      .split(/\n+|\s+(?=\(\d+\)\s*)/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (segments.length === 1 && segments[0].length > 320) {
+      const sentences = segments[0].match(/[^.!?]+[.!?]+(?:\s+|$)/g);
+      if (sentences && sentences.length >= 3) {
+        segments = [];
+        for (let i = 0; i < sentences.length; i += 2) {
+          segments.push(sentences.slice(i, i + 2).join(' ').trim());
+        }
+      }
+    }
+
+    const defaultTitles: Record<string, string> = {
+      '1': 'Presença & Autoridade Transmídia',
+      '2': 'Ressonância de Audiência & Oportunidades',
+      '3': 'Diretrizes de Expansão',
+    };
+
+    return segments.map((seg) => {
+      const numberedMatch = seg.match(/^(?:\((\d+)\)|(\d+)[\.\)])\s*(?:([^:–—-]{3,65})\s*[:–—-]\s*)?(.*)$/);
+      if (numberedMatch) {
+        const num = numberedMatch[1] || numberedMatch[2];
+        const explicitTitle = numberedMatch[3]?.trim().replace(/^\*\*|\*\*$/g, '');
+        const body = (numberedMatch[4] || '').trim();
+        return {
+          badge: `0${num}`,
+          title: explicitTitle || defaultTitles[num] || `Eixo Analítico ${num}`,
+          html: this.formatChatText(body || seg),
+        };
+      }
+
+      const titleMatch = seg.match(/^(?:\*\*([^*]{3,55})\*\*|([A-ZÀ-Ú][A-Za-zÀ-ÿ0-9\s&/]{3,45}))\s*[:–—-]\s*(.*)$/);
+      if (titleMatch) {
+        const title = (titleMatch[1] || titleMatch[2]).trim();
+        const body = (titleMatch[3] || '').trim();
+        return {
+          title,
+          html: this.formatChatText(body),
+        };
+      }
+
+      return {
+        html: this.formatChatText(seg),
+      };
+    });
   }
 
   exportCsv(): void {

@@ -1,4 +1,4 @@
-"""API do Insta Analyzer (FastAPI).
+"""API do Argos (FastAPI).
 
 Rodar:  uvicorn main:app --reload --port 8000
 """
@@ -10,16 +10,16 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Callable, Literal, Optional
+from typing import Any, Callable, Literal, Optional
 
 # Configura logging estruturado no console para permitir acompanhamento verbose
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [InstaAnalyzer] %(message)s",
+    format="%(asctime)s [%(levelname)s] [Argos] %(message)s",
     datefmt="%H:%M:%S",
     stream=sys.stdout,
 )
-logger = logging.getLogger("insta_analyzer")
+logger = logging.getLogger("argos")
 
 backend_dir = str(Path(__file__).resolve().parent)
 if backend_dir not in sys.path:
@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Insta Analyzer API", lifespan=lifespan)
+app = FastAPI(title="Argos OSINT API - Threat Intelligence & Reconnaissance", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200", "http://127.0.0.1:4200"],
@@ -353,14 +353,39 @@ async def execute_analysis(
     elif req.source == "own":
         if progress_callback:
             progress_callback("Consultando Meta Graph API...")
-        info, posts, comments, extra = await anyio.to_thread.run_sync(
-            cg.fetch_own,
-            token,
-            req.max_posts,
-            req.with_comments,
-            req.comments_per_post,
-            req.with_insights,
-        )
+        try:
+            info, posts, comments, extra = await anyio.to_thread.run_sync(
+                cg.fetch_own,
+                token,
+                req.max_posts,
+                req.with_comments,
+                req.comments_per_post,
+                req.with_insights,
+            )
+        except Exception as graph_err:
+            apify_fallback_token = os.getenv("APIFY_TOKEN", "").strip()
+            if username and apify_fallback_token:
+                logger.warning(
+                    f"Meta Graph API falhou ({graph_err}). Acionando fallback automático via Apify para @{username}..."
+                )
+                if progress_callback:
+                    progress_callback(
+                        f"Token Meta Graph inválido/expirado. Acionando fallback automático via Apify para @{username}..."
+                    )
+                info, posts, comments, extra = await ca.run_pipeline_async(
+                    token=apify_fallback_token,
+                    username=username,
+                    max_posts=req.max_posts,
+                    with_comments=req.with_comments,
+                    comments_per_post=req.comments_per_post,
+                    with_stories=req.with_stories,
+                    with_tagged=req.with_tagged,
+                    with_highlights=req.with_highlights,
+                    progress=progress_callback,
+                    pipeline_timeout_secs=ca.DEFAULT_PIPELINE_TIMEOUT_SECS,
+                )
+            else:
+                raise
 
     elif req.source == "discovery":
         my_id = req.my_ig_id.strip() or os.getenv("IG_USER_ID", "")
@@ -368,10 +393,35 @@ async def execute_analysis(
             raise ValueError("Informe o ID da sua conta Instagram (ig_user_id).")
         if progress_callback:
             progress_callback("Consultando Instagram Business Discovery...")
-        info, posts = await anyio.to_thread.run_sync(
-            cg.fetch_discovery, token, my_id, username, req.max_posts
-        )
-        comments = []
+        try:
+            info, posts = await anyio.to_thread.run_sync(
+                cg.fetch_discovery, token, my_id, username, req.max_posts
+            )
+            comments = []
+        except Exception as graph_err:
+            apify_fallback_token = os.getenv("APIFY_TOKEN", "").strip()
+            if username and apify_fallback_token:
+                logger.warning(
+                    f"Meta Discovery falhou ({graph_err}). Acionando fallback automático via Apify para @{username}..."
+                )
+                if progress_callback:
+                    progress_callback(
+                        f"Token Meta Discovery inválido/expirado. Acionando fallback automático via Apify para @{username}..."
+                    )
+                info, posts, comments, extra = await ca.run_pipeline_async(
+                    token=apify_fallback_token,
+                    username=username,
+                    max_posts=req.max_posts,
+                    with_comments=req.with_comments,
+                    comments_per_post=req.comments_per_post,
+                    with_stories=req.with_stories,
+                    with_tagged=req.with_tagged,
+                    with_highlights=req.with_highlights,
+                    progress=progress_callback,
+                    pipeline_timeout_secs=ca.DEFAULT_PIPELINE_TIMEOUT_SECS,
+                )
+            else:
+                raise
 
     else:  # insta
         if progress_callback:
@@ -845,6 +895,60 @@ class UsernameScanRequest(BaseModel):
     limit_targets: int = Field(16, ge=1, le=30)
 
 
+# =========================================================================
+# Rotas Oficiais Argos OSINT & Google/DDG Dorking (argos-osint)
+# =========================================================================
+
+from collectors.osint_collector import OsintCollector, is_safe_url
+
+
+class OsintDorkRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    preset: str = Field("reputation", pattern="^(reputation|media_kit|press|transmedia|judicial|custom)$")
+    max_results: int = Field(15, ge=1, le=50)
+    custom_dork: Optional[str] = None
+
+
+class BioResolveRequest(BaseModel):
+    url: str = Field(..., min_length=4)
+
+
+class UsernameScanRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=60)
+    limit_targets: int = Field(50, ge=1, le=100)
+    categories: Optional[list[str]] = None
+
+
+class DomainInspectRequest(BaseModel):
+    domain: str = Field(..., min_length=3)
+
+
+class SubdomainEnumRequest(BaseModel):
+    domain: str = Field(..., min_length=3)
+    limit: int = Field(40, ge=1, le=150)
+
+
+class EmailFootprintRequest(BaseModel):
+    email: str = Field(..., min_length=5)
+
+
+class ArchiveLookupRequest(BaseModel):
+    url: str = Field(..., min_length=4)
+    limit: int = Field(12, ge=1, le=50)
+
+
+class EntityGraphRequest(BaseModel):
+    dossier: dict[str, Any]
+
+
+class ArgosAiAssessmentRequest(BaseModel):
+    dossier: dict[str, Any]
+    provider: str = ""
+    model: str = ""
+    token: str = ""
+    fallback_token: str = ""
+
+
 class OsintDossierRequest(BaseModel):
     target: str = Field(..., min_length=1)
     bio_url: Optional[str] = None
@@ -853,9 +957,122 @@ class OsintDossierRequest(BaseModel):
     include_media_kit: bool = True
 
 
+class OmniSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=250)
+    case_id: Optional[str] = None
+    auto_save: bool = True
+
+
+class PhoneFootprintRequest(BaseModel):
+    phone: str = Field(..., min_length=6, max_length=40)
+
+
+class CorporateBrRequest(BaseModel):
+    cnpj: str = Field(..., min_length=11, max_length=30)
+
+
+class OsintCaseSaveRequest(BaseModel):
+    case_id: Optional[str] = None
+    title: Optional[str] = None
+    pivots_trail: Optional[list[str]] = None
+    analyst_notes: Optional[str] = None
+    case_data: dict[str, Any]
+
+
+@app.post("/api/argos/omni-search")
+@app.post("/api/osint/omni-search")
+async def argos_omni_search(req: OmniSearchRequest) -> dict:
+    """Motor Unificado Estilo Maltego: recebe qualquer input (e-mail, telefone, CNPJ, CPF, IP, domínio, URL, @user, nome)
+    e dispara automaticamente todas as Transforms aplicáveis, construindo o grafo de entidades e salvando no PostgreSQL.
+    """
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Informe um alvo para investigação.")
+    try:
+        dossier = await OsintCollector.omni_investigate(req.query)
+        if req.auto_save:
+            saved_summary = await repository.upsert_osint_case(
+                case_data=dossier,
+                case_id=req.case_id,
+            )
+            if saved_summary:
+                dossier["case_id"] = saved_summary["id"]
+                dossier["sha256_hash"] = saved_summary["sha256_hash"]
+                dossier["saved_at"] = saved_summary["updated_at"] or saved_summary["created_at"]
+        return dossier
+    except Exception as exc:
+        logger.error(f"Erro na busca Omni-Hunter: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na investigação Omni-Hunter: {str(exc)}")
+
+
+@app.post("/api/argos/corporate-br")
+@app.post("/api/osint/corporate-br")
+async def argos_corporate_br(req: CorporateBrRequest) -> dict:
+    """Consulta inteligência corporativa brasileira (CNPJ, Quadro Societário QSA, CNAE, Endereço, Telefones)."""
+    try:
+        return await OsintCollector.scan_br_corporate_intel(req.cnpj)
+    except Exception as exc:
+        logger.error(f"Erro na consulta corporativa BR: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na consulta CNPJ: {str(exc)}")
+
+
+@app.get("/api/argos/cases")
+@app.get("/api/osint/cases")
+async def argos_list_cases(limit: int = 30) -> list[dict]:
+    """Lista Casos de Investigação OSINT salvos no PostgreSQL."""
+    return await repository.list_osint_cases(limit=limit)
+
+
+@app.get("/api/argos/cases/{case_id}")
+@app.get("/api/osint/cases/{case_id}")
+async def argos_get_case(case_id: str) -> dict:
+    """Recupera um Caso de Investigação OSINT completo do PostgreSQL."""
+    case = await repository.get_osint_case_by_id(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Caso OSINT não encontrado no banco de dados.")
+    return case
+
+
+@app.post("/api/argos/cases")
+@app.post("/api/osint/cases")
+async def argos_save_case(req: OsintCaseSaveRequest) -> dict:
+    """Salva ou atualiza um Caso de Investigação OSINT (com grafo fundido, pivôs, notas e Hash SHA-256)."""
+    summary = await repository.upsert_osint_case(
+        case_data=req.case_data,
+        case_id=req.case_id,
+        title=req.title,
+        pivots_trail=req.pivots_trail,
+        analyst_notes=req.analyst_notes,
+    )
+    if not summary:
+        raise HTTPException(status_code=500, detail="Não foi possível persistir o Caso OSINT.")
+    return summary
+
+
+@app.delete("/api/argos/cases/{case_id}")
+@app.delete("/api/osint/cases/{case_id}")
+async def argos_delete_case(case_id: str) -> dict:
+    """Exclui um Caso de Investigação OSINT do PostgreSQL."""
+    ok = await repository.delete_osint_case(case_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Caso OSINT não encontrado.")
+    return {"id": case_id, "deleted": True}
+
+
+@app.post("/api/argos/phone-footprint")
+@app.post("/api/osint/phone-footprint")
+async def argos_phone_footprint(req: PhoneFootprintRequest) -> dict:
+    """Audita metadados telefônicos (E.164, DDD/Região, WhatsApp/Telegram e exposição web)."""
+    try:
+        return await OsintCollector.scan_phone_footprint(req.phone)
+    except Exception as exc:
+        logger.error(f"Erro na varredura telefônica: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na varredura telefônica: {str(exc)}")
+
+
+@app.post("/api/argos/dork")
 @app.post("/api/osint/dork")
-async def osint_dork_search(req: OsintDorkRequest) -> dict:
-    """Executa pesquisa web OSINT com operadores de dorking ou presets especializados."""
+async def argos_dork_search(req: OsintDorkRequest) -> dict:
+    """Executa pesquisa web de inteligência com operadores de dorking ou presets especializados."""
     try:
         results = await OsintCollector.search_dork(
             query=req.query,
@@ -875,9 +1092,10 @@ async def osint_dork_search(req: OsintDorkRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Erro na pesquisa OSINT: {str(exc)}")
 
 
+@app.post("/api/argos/bio-resolve")
 @app.post("/api/osint/bio-resolve")
-async def osint_bio_resolve(req: BioResolveRequest) -> dict:
-    """Resolve páginas agregadoras de links da bio (Linktree, Beacons, Carrd) com proteção SSRF."""
+async def argos_bio_resolve(req: BioResolveRequest) -> dict:
+    """Resolve agregadores de links da bio (Linktree, Beacons, Carrd) com proteção SSRF e extração de rastreadores."""
     if not is_safe_url(req.url):
         raise HTTPException(status_code=400, detail="URL bloqueada por política de segurança SSRF.")
     try:
@@ -887,22 +1105,80 @@ async def osint_bio_resolve(req: BioResolveRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"Erro ao resolver bio URL: {str(exc)}")
 
 
+@app.post("/api/argos/username-scan")
 @app.post("/api/osint/username-scan")
-async def osint_username_scan(req: UsernameScanRequest) -> dict:
-    """Detecta a presença de @username em 20+ plataformas web abertas."""
+async def argos_username_scan(req: UsernameScanRequest) -> dict:
+    """Detecta a presença de @username em mais de 100 plataformas web abertas."""
     try:
         return await OsintCollector.scan_username_footprint(
             username=req.username,
             limit_targets=req.limit_targets,
+            categories=req.categories,
         )
     except Exception as exc:
         logger.error(f"Erro ao varrer username: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro na varredura OSINT: {str(exc)}")
 
 
+@app.post("/api/argos/domain-inspect")
+@app.post("/api/osint/domain-inspect")
+async def argos_domain_inspect(req: DomainInspectRequest) -> dict:
+    """Audita passivamente DNS (A/MX), certificados SSL e SANs de um domínio."""
+    try:
+        return await OsintCollector.inspect_domain(req.domain)
+    except Exception as exc:
+        logger.error(f"Erro na inspeção de domínio: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na inspeção de domínio: {str(exc)}")
+
+
+@app.post("/api/argos/subdomain-enum")
+@app.post("/api/osint/subdomain-enum")
+async def argos_subdomain_enum(req: SubdomainEnumRequest) -> dict:
+    """Enumera todos os subdomínios históricos via Certificate Transparency (crt.sh)."""
+    try:
+        return await OsintCollector.enumerate_subdomains(req.domain, limit=req.limit)
+    except Exception as exc:
+        logger.error(f"Erro ao enumerar subdomínios: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na enumeração de subdomínios: {str(exc)}")
+
+
+@app.post("/api/argos/email-footprint")
+@app.post("/api/osint/email-footprint")
+async def argos_email_footprint(req: EmailFootprintRequest) -> dict:
+    """Verifica passivamente existência de contas vinculadas a um e-mail em serviços abertos."""
+    try:
+        return await OsintCollector.scan_email_footprint(req.email)
+    except Exception as exc:
+        logger.error(f"Erro na varredura de e-mail: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na varredura de e-mail: {str(exc)}")
+
+
+@app.post("/api/argos/archive-lookup")
+@app.post("/api/osint/archive-lookup")
+async def argos_archive_lookup(req: ArchiveLookupRequest) -> dict:
+    """Consulta capturas históricas da página na Wayback Machine (Internet Archive CDX)."""
+    try:
+        return await OsintCollector.query_wayback_snapshots(req.url, limit=req.limit)
+    except Exception as exc:
+        logger.error(f"Erro na consulta à Wayback Machine: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na consulta à Wayback Machine: {str(exc)}")
+
+
+@app.post("/api/argos/entity-graph")
+@app.post("/api/osint/entity-graph")
+async def argos_entity_graph(req: EntityGraphRequest) -> dict:
+    """Gera estrutura de nós e arestas com centralidade para o grafo visual de conexões."""
+    try:
+        return OsintCollector.build_entity_graph(req.dossier)
+    except Exception as exc:
+        logger.error(f"Erro ao gerar grafo de entidades: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro no grafo de entidades: {str(exc)}")
+
+
+@app.post("/api/argos/dossier")
 @app.post("/api/osint/dossier")
-async def osint_generate_dossier(req: OsintDossierRequest) -> dict:
-    """Consolida um dossiê OSINT completo: Bio Links + Pegada Digital + Menções/Dorks."""
+async def argos_generate_dossier(req: OsintDossierRequest) -> dict:
+    """Consolida um dossiê OSINT 360°: Bio Links + Pegada Digital + Menções + Grafo de Vínculos."""
     try:
         return await OsintCollector.generate_dossier(
             username_or_brand=req.target,
@@ -914,6 +1190,24 @@ async def osint_generate_dossier(req: OsintDossierRequest) -> dict:
     except Exception as exc:
         logger.error(f"Erro ao compilar dossiê OSINT: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao gerar dossiê OSINT: {str(exc)}")
+
+
+@app.post("/api/argos/ai-assessment")
+@app.post("/api/osint/ai-assessment")
+async def argos_ai_assessment(req: ArgosAiAssessmentRequest) -> dict:
+    """Gera avaliação de inteligência por IA (OPSEC Risk, correlação de identidade e briefing)."""
+    try:
+        return await ai_service.generate_argos_ai_assessment(
+            dossier_data=req.dossier,
+            provider=req.provider,
+            model=req.model,
+            token=req.token,
+            fallback_token=req.fallback_token,
+        )
+    except Exception as exc:
+        logger.error(f"Erro na avaliação de IA do Argos: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro na avaliação de IA: {str(exc)}")
+
 
 
 

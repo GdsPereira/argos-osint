@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -245,9 +245,15 @@ import { IconComponent } from '../ui/icon/icon.component';
                 <span class="badge badge-primary">{{ diagnosis.meta?.provider | uppercase }}</span>
               </div>
             </div>
-            <p class="exec-text">
-              {{ diagnosis.executive_summary }}
-            </p>
+            <div class="exec-paragraphs-list">
+              <div class="exec-paragraph-block" *ngFor="let block of formatAiNarrative(diagnosis.executive_summary)">
+                <div class="exec-paragraph-header" *ngIf="block.badge || block.title">
+                  <span class="exec-paragraph-badge" *ngIf="block.badge">{{ block.badge }}</span>
+                  <strong class="exec-paragraph-title" *ngIf="block.title">{{ block.title }}</strong>
+                </div>
+                <p class="exec-text" [innerHTML]="block.html"></p>
+              </div>
+            </div>
 
             <div class="quick-wins-section" *ngIf="diagnosis.quick_wins && diagnosis.quick_wins.length > 0">
               <h4 class="quick-wins-title">
@@ -338,7 +344,7 @@ import { IconComponent } from '../ui/icon/icon.component';
                 <app-icon name="bar-chart" [size]="14"></app-icon>
                 <span>Modus Operandi de Mídia</span>
               </h5>
-              <p>{{ diagnosis.content_strategy.format_verdict }}</p>
+              <p [innerHTML]="formatMessageText(diagnosis.content_strategy.format_verdict)"></p>
             </div>
 
             <div class="strategy-block">
@@ -346,7 +352,7 @@ import { IconComponent } from '../ui/icon/icon.component';
                 <app-icon name="file-text" [size]="14"></app-icon>
                 <span>Análise Narrativa, Discurso & Linguagem</span>
               </h5>
-              <p>{{ diagnosis.content_strategy.copywriting_and_hooks }}</p>
+              <p [innerHTML]="formatMessageText(diagnosis.content_strategy.copywriting_and_hooks)"></p>
             </div>
 
             <div class="strategy-block">
@@ -354,7 +360,7 @@ import { IconComponent } from '../ui/icon/icon.component';
                 <app-icon name="clock" [size]="14"></app-icon>
                 <span>Pattern of Life (Padrão de Vida, Fuso & Rotina)</span>
               </h5>
-              <p>{{ diagnosis.content_strategy.timing_and_cadence }}</p>
+              <p [innerHTML]="formatMessageText(diagnosis.content_strategy.timing_and_cadence)"></p>
             </div>
           </div>
 
@@ -373,7 +379,7 @@ import { IconComponent } from '../ui/icon/icon.component';
                 <app-icon name="message-square" [size]="14"></app-icon>
                 <span>Clima Social & Percepção da Audiência</span>
               </h5>
-              <p>{{ diagnosis.audience_insights.sentiment_verdict }}</p>
+              <p [innerHTML]="formatMessageText(diagnosis.audience_insights.sentiment_verdict)"></p>
             </div>
 
             <div class="strategy-block">
@@ -890,10 +896,59 @@ import { IconComponent } from '../ui/icon/icon.component';
       gap: 1rem;
     }
 
+    .exec-paragraphs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .exec-paragraph-block {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-left: 3px solid #8b5cf6;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+
+    .exec-paragraph-block:nth-child(2) {
+      border-left-color: #38bdf8;
+    }
+
+    .exec-paragraph-block:nth-child(3) {
+      border-left-color: #f59e0b;
+    }
+
+    .exec-paragraph-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .exec-paragraph-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.1rem 0.45rem;
+      border-radius: 5px;
+      background: rgba(139, 92, 246, 0.2);
+      color: #c4b5fd;
+      border: 1px solid rgba(139, 92, 246, 0.35);
+    }
+
+    .exec-paragraph-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
     .exec-text {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      line-height: 1.68;
+      margin: 0;
     }
 
     .quick-wins-section {
@@ -1288,7 +1343,7 @@ import { IconComponent } from '../ui/icon/icon.component';
     :host ::ng-deep .icon-indigo { color: #818cf8; }
   `]
 })
-export class TabAiComponent implements OnInit {
+export class TabAiComponent implements OnInit, OnChanges {
   @Input() analysis!: AnalyzeResponse;
   @Input() envConfig?: ConfigResponse;
 
@@ -1316,6 +1371,35 @@ export class TabAiComponent implements OnInit {
     }
     if (this.envConfig?.ai_config?.model) {
       this.customModel = this.envConfig.ai_config.model;
+    }
+    this.tryRestoreSavedDiagnosis();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['analysis'] && !changes['analysis'].firstChange) {
+      this.diagnosis = null;
+      this.chatMessages = [];
+      this.tryRestoreSavedDiagnosis();
+    }
+  }
+
+  private tryRestoreSavedDiagnosis(): void {
+    if (!this.analysis) return;
+    const anyAnl = this.analysis as any;
+    if (anyAnl.ai_report && anyAnl.ai_report.executive_summary) {
+      this.diagnosis = anyAnl.ai_report;
+      return;
+    }
+    const analysisId = anyAnl.id || anyAnl.db_id;
+    if (analysisId) {
+      this.api.getReportAiDossiers(analysisId).subscribe({
+        next: (list) => {
+          if (Array.isArray(list) && list.length > 0 && list[0]?.diagnosis_data) {
+            this.diagnosis = list[0].diagnosis_data;
+          }
+        },
+        error: () => {}
+      });
     }
   }
 
@@ -1433,13 +1517,74 @@ export class TabAiComponent implements OnInit {
   }
 
   formatMessageText(text: string): string {
+    if (!text) return '';
     const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
     return escaped
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f8fafc">$1</strong>')
       .replace(/\n/g, '<br/>');
+  }
+
+  formatAiNarrative(rawText: string | undefined | null): Array<{ badge?: string; title?: string; html: string }> {
+    if (!rawText || !rawText.trim()) return [];
+    const normalized = rawText.replace(/\\n/g, '\n').trim();
+
+    let segments = normalized
+      .split(/\n+|\s+(?=\(\d+\)\s*)/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (segments.length === 1 && segments[0].length > 220) {
+      const sentences = segments[0].match(/[^.!?]+[.!?]+(?:\s+|$)/g);
+      if (sentences && sentences.length >= 3) {
+        segments = [];
+        const chunkSize = Math.ceil(sentences.length / 3);
+        for (let i = 0; i < sentences.length; i += chunkSize) {
+          segments.push(sentences.slice(i, i + chunkSize).join(' ').trim());
+        }
+      }
+    }
+
+    const defaultTitles: Record<string, string> = {
+      '1': 'Perfilamento & Atribuição de Identidade',
+      '2': 'Conexões, Modus Operandi & Pattern of Life',
+      '3': 'Anomalias de Engajamento & Superfície OPSEC',
+      '4': 'Síntese Complementar de Inteligência',
+    };
+
+    return segments.map((seg, idx) => {
+      const fallbackIdx = String(idx + 1);
+      const numberedMatch = seg.match(/^(?:\((\d+)\)|(\d+)[\.\)])\s*(?:([^:–—-]{3,65})\s*[:–—-]\s*)?(.*)$/);
+      if (numberedMatch) {
+        const num = numberedMatch[1] || numberedMatch[2];
+        const explicitTitle = numberedMatch[3]?.trim().replace(/^\*\*|\*\*$/g, '');
+        const body = (numberedMatch[4] || '').trim();
+        return {
+          badge: `0${num}`,
+          title: explicitTitle || defaultTitles[num] || `Eixo Analítico ${num}`,
+          html: this.formatMessageText(body || seg),
+        };
+      }
+
+      const titleMatch = seg.match(/^(?:\*\*([^*]{3,55})\*\*|([A-ZÀ-Ú][A-Za-zÀ-ÿ0-9\s&/]{3,45}))\s*[:–—-]\s*(.*)$/);
+      if (titleMatch) {
+        const title = (titleMatch[1] || titleMatch[2]).trim();
+        const body = (titleMatch[3] || '').trim();
+        return {
+          badge: `0${fallbackIdx}`,
+          title,
+          html: this.formatMessageText(body),
+        };
+      }
+
+      return {
+        badge: segments.length > 1 ? `0${fallbackIdx}` : undefined,
+        title: segments.length > 1 ? (defaultTitles[fallbackIdx] || `Eixo Analítico ${fallbackIdx}`) : undefined,
+        html: this.formatMessageText(seg),
+      };
+    });
   }
 
   getScoreBadgeClass(score: number): string {

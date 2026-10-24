@@ -208,3 +208,46 @@ class OmnichannelReportModel(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
+
+class OsintCaseModel(Base):
+    """Armazena Casos de Investigação OSINT (Grafo de Vínculos, Trilha de Pivôs e Hash SHA-256 Forense)."""
+    __tablename__ = "osint_cases"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    root_query: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(64), default="entity", index=True)
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    pivots_trail: Mapped[list[str]] = mapped_column(JSON, default=list)
+    total_nodes: Mapped[int] = mapped_column(Integer, default=0)
+    total_edges: Mapped[int] = mapped_column(Integer, default=0)
+    sha256_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    analyst_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    case_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def to_summary_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "root_query": self.root_query,
+            "entity_type": self.entity_type,
+            "title": self.title or f"Caso OSINT: {self.root_query}",
+            "pivots_trail": self.pivots_trail or [self.root_query],
+            "total_nodes": self.total_nodes,
+            "total_edges": self.total_edges,
+            "sha256_hash": self.sha256_hash,
+            "analyst_notes": self.analyst_notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.created_at else None,
+        }
+
+    def to_full_dict(self) -> dict[str, Any]:
+        data = dict(self.case_data) if self.case_data else {}
+        data["case_id"] = self.id
+        data["sha256_hash"] = self.sha256_hash
+        data["analyst_notes"] = self.analyst_notes
+        data["pivots_trail"] = self.pivots_trail or [self.root_query]
+        data["saved_at"] = self.created_at.isoformat() if self.created_at else None
+        return data
+
+

@@ -1,4 +1,4 @@
-# 🌐 Argos Social — Instagram Analytics Pro & Transmedia Intelligence Suite
+# 🌐 Argos — Threat Intelligence, Social Listening & OSINT Reconnaissance Suite
 
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI" />

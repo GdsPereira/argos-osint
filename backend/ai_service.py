@@ -14,7 +14,7 @@ import httpx
 
 from pathlib import Path
 
-logger = logging.getLogger("insta_analyzer.ai")
+logger = logging.getLogger("argos.ai")
 
 DEFAULT_GEMINI_MODEL = "gemma-4-31b-it"
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
@@ -441,8 +441,8 @@ async def _call_openrouter(
 
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://instagram-analytics-pro.local",
-        "X-Title": "Instagram Analytics Pro",
+        "HTTP-Referer": "https://argos.local",
+        "X-Title": "Argos",
         "Content-Type": "application/json",
     }
 
@@ -745,7 +745,7 @@ Sua missão é processar todos os metadados, vetores de contato, conexões e evi
 Você DEVE responder ESTRITAMENTE em formato JSON com a seguinte estrutura:
 {
   "health_score": <número inteiro de 0 a 100 avaliando o Nível de Integridade, Autenticidade e Exposição de OPSEC do Alvo, onde 100 indica perfil com alta transparência, baixa manipulação de bots e OPSEC controlada>,
-  "executive_summary": "<dossiê executivo de inteligência em 3 parágrafos aprofundados contendo: (1) Perfilamento e atribuição de identidade digital do alvo, (2) Análise de conexões, colaboradores, modus operandi e padrão de vida (Pattern of Life), (3) Avaliação de anomalias de engajamento, superfície de exposição e vulnerabilidades identificadas>",
+  "executive_summary": "<dossiê executivo de inteligência OBRIGATORIAMENTE dividido em 3 parágrafos separados por quebra de linha dupla (\\n\\n), iniciando cada parágrafo exatamente com: (1) Perfilamento & Atribuição de Identidade: ... \\n\\n(2) Conexões, Modus Operandi & Pattern of Life: ... \\n\\n(3) Anomalias de Engajamento & Superfície OPSEC: ...>",
   "swot": {
     "strengths": ["<ativo de inteligência ou força de presença/influência 1>", "<ativo 2>", "<ativo 3>"],
     "weaknesses": ["<vulnerabilidade de OPSEC, vazamento de dados de contato ou incoerência 1>", "<vulnerabilidade 2>", "<vulnerabilidade 3>"],
@@ -969,7 +969,7 @@ Retorne um JSON ESTRUTURADO rigoroso com o seguinte schema exato:
 {{
   "omnichannel_score": 85,
   "score_rationale": "Justificativa analítica da nota de 0 a 100 com base em ressonância e autoridade",
-  "executive_summary": "Resumo executivo de alto impacto em 2 parágrafos sobre a presença e percepção pública",
+  "executive_summary": "Resumo executivo de alto impacto OBRIGATORIAMENTE dividido em 2 ou 3 parágrafos separados por quebra de linha dupla (\\n\\n): (1) Presença & Autoridade Transmídia: ... \\n\\n(2) Ressonância de Audiência & Oportunidades: ...",
   "cross_platform_comparison": [
     {{
       "platform": "nome_da_rede",
@@ -1065,4 +1065,90 @@ Diretrizes:
         "reply": reply,
         "meta": meta,
     }
+
+
+async def generate_argos_ai_assessment(
+    dossier_data: dict[str, Any],
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    token: Optional[str] = None,
+    fallback_token: Optional[str] = None,
+) -> dict[str, Any]:
+    """Gera avaliação de risco OPSEC, correlação de identidade e briefing de inteligência Argos OSINT."""
+    _ensure_env()
+    final_provider, final_model, final_token, base_url = _resolve_provider_and_model(provider, model, token)
+
+    target = dossier_data.get("target") or dossier_data.get("query") or "Alvo Desconhecido"
+    entity_type = (dossier_data.get("classification") or {}).get("detected_type") or dossier_data.get("entity_type") or "unknown"
+    footprint = (dossier_data.get("digital_footprint") or {}).get("found") or []
+    bio = dossier_data.get("bio_intelligence") or {}
+    mentions = (dossier_data.get("web_mentions") or [])[:8]
+    email_intel = dossier_data.get("email_intelligence") or {}
+    phone_intel = dossier_data.get("phone_intelligence") or {}
+    domain_intel = dossier_data.get("domain_intelligence") or {}
+    corp_intel = dossier_data.get("corporate_intelligence") or {}
+    rdap_intel = dossier_data.get("rdap_intelligence") or {}
+    ip_threat = dossier_data.get("ip_threat_intelligence") or {}
+    breach_threat = dossier_data.get("threat_intelligence") or {}
+
+    prompt = f"""Analise este dossiê OSINT compilado pelo Argos OSINT para o alvo '{target}' (Tipo de Entidade: {entity_type}):
+
+Contas Descobertas na Pegada Digital ({len(footprint)}):
+{json.dumps([{'p': acc.get('name'), 'cat': acc.get('category'), 'url': acc.get('url')} for acc in footprint[:25]], ensure_ascii=False)}
+
+Página de Bio e Domínio:
+{json.dumps({'url': bio.get('final_url'), 'title': bio.get('title'), 'socials': bio.get('socials')}, ensure_ascii=False)}
+
+Inteligência de E-mail / Telefone:
+{json.dumps({'email_accounts': email_intel.get('accounts', [])[:10], 'phone_carrier': phone_intel.get('carrier_hint'), 'phone_channels': phone_intel.get('channels', [])[:6]}, ensure_ascii=False)}
+
+Inteligência Corporativa (CNPJ/QSA) e RDAP (.br):
+{json.dumps({'razao_social': corp_intel.get('razao_social'), 'situacao': corp_intel.get('situacao_cadastral'), 'uf': corp_intel.get('uf'), 'qsa_socios': corp_intel.get('qsa', [])[:10], 'rdap_owner': rdap_intel.get('owner_name'), 'rdap_doc': rdap_intel.get('owner_document')}, ensure_ascii=False)}
+
+Threat Intelligence (Shodan InternetDB / InfoStealers / Vazamentos):
+{json.dumps({'ip_ports': ip_threat.get('ports'), 'ip_vulns': ip_threat.get('vulns'), 'domain_ips': domain_intel.get('dns', {}).get('A', []), 'compromised': breach_threat.get('compromised'), 'stealers_count': len(breach_threat.get('stealers') or []), 'breaches': (breach_threat.get('breaches') or [])[:10]}, ensure_ascii=False)}
+
+Menções na Web e Dorking ({len(mentions)}):
+{json.dumps([{'title': m.get('title'), 'url': m.get('url'), 'snippet': m.get('snippet')} for m in mentions], ensure_ascii=False)}
+
+Gere um JSON rigorosamente estruturado com os seguintes campos:
+{{
+  "executive_summary": "Briefing executivo OBRIGATORIAMENTE dividido em 3 parágrafos separados por quebra de linha dupla (\\n\\n), iniciando cada bloco com: (1) Identidade & Pegada Digital: ... \\n\\n(2) Infraestrutura, Vínculos & Corporativo: ... \\n\\n(3) Superfície de Exposição & Risco OPSEC: ...",
+  "identity_confidence_score": 85,
+  "opsec_risk_level": "medium",
+  "exposed_vectors": [
+    "Vetor de risco ou vazamento 1 (ex: e-mail de domínio pessoal exposto, portas vulneráveis ou credenciais em InfoStealers)",
+    "Vetor de risco ou vazamento 2"
+  ],
+  "tlp_classification": "TLP:AMBER",
+  "pivot_recommendations": [
+    "Recomendação tática de próximo passo 1",
+    "Recomendação tática de próximo passo 2"
+  ]
+}}"""
+
+    system_instruction = (
+        "Você é o Oficial de Inteligência de Ameaças e Especialista em OSINT da plataforma Argos OSINT. "
+        "Seu papel é analisar pegadas digitais, detectar correlações de identidade, pontuar riscos de exposição cibernética (OPSEC) "
+        "e propor pivôs táticos de investigação. Retorne APENAS o bloco JSON válido em Português."
+    )
+
+    raw_output, meta = await _execute_llm(
+        system_instruction=system_instruction,
+        prompt=prompt,
+        provider=final_provider,
+        token=final_token,
+        model=final_model,
+        base_url=base_url,
+        json_mode=True,
+        fallback_token=fallback_token or "",
+    )
+
+    parsed = _extract_json_block(raw_output)
+    meta["target"] = target
+    return {
+        "assessment": parsed,
+        "meta": meta,
+    }
+
 

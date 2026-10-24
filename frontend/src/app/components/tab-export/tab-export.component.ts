@@ -476,7 +476,7 @@ export class TabExportComponent {
 
     const text = `
 =====================================================
-INSTA ANALYZER - RESUMO EXECUTIVO
+ARGOS - RESUMO EXECUTIVO
 =====================================================
 Perfil: @${info?.username} (${info?.nome_completo || 'Sem nome'})
 Seguidores: ${info?.seguidores?.toLocaleString('pt-BR')}
@@ -510,7 +510,7 @@ Positivos: ${this.analysis.comments?.sentiment?.positivo || 0}
 Neutros: ${this.analysis.comments?.sentiment?.neutro || 0}
 Negativos: ${this.analysis.comments?.sentiment?.negativo || 0}
 =====================================================
-Gerado automaticamente pelo Insta Analyzer.
+Gerado automaticamente pelo Argos.
 `.trim();
 
     this.api.exportToText(text, `resumo_${username}_${this.getDateStamp()}`);

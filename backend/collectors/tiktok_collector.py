@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 from collectors.base import MediaType, PlatformType, UnifiedPost, UnifiedProfile
 
-logger = logging.getLogger("insta_analyzer.collectors.tiktok")
+logger = logging.getLogger("argos.collectors.tiktok")
 
 APIFY_ACTOR_TIKTOK = os.getenv("APIFY_TIKTOK_ACTOR", "clockworks/free-tiktok-scraper")
 

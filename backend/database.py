@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 
-logger = logging.getLogger("insta_analyzer.database")
+logger = logging.getLogger("argos.database")
 
 
 class Base(DeclarativeBase):
@@ -49,11 +49,11 @@ def get_database_url() -> str:
         return raw_url
 
     # Monta a partir das variáveis individuais
-    user = os.getenv("POSTGRES_USER", "insta_user")
-    pwd = os.getenv("POSTGRES_PASSWORD", "insta_pass_2026")
+    user = os.getenv("POSTGRES_USER", "argos_user")
+    pwd = os.getenv("POSTGRES_PASSWORD", "argos_pass_2026")
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "insta_db")
+    db = os.getenv("POSTGRES_DB", "argos_db")
 
     return f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}"
 
@@ -147,7 +147,7 @@ async def init_db() -> bool:
 
         # Fallback para SQLite assíncrono se o Postgres estiver inacessível localmente
         try:
-            fallback_url = os.getenv("FALLBACK_DATABASE_URL", "sqlite+aiosqlite:///insta_local.db")
+            fallback_url = os.getenv("FALLBACK_DATABASE_URL", "sqlite+aiosqlite:///argos_local.db")
             _engine = create_async_engine(fallback_url, echo=False)
             _session_factory = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncSession)
             async with _engine.begin() as conn:

@@ -1,5 +1,5 @@
 # ==============================================================================
-# Git Ignore - Instagram Analytics Pro / Social Listening Suite
+# Git Ignore - Argos / Social Listening & Threat Intelligence Suite
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -120,10 +120,12 @@ bazel-out/
 *.db-shm
 *.db-wal
 backend/insta_local.db
+backend/argos_local.db
 
 # Diretórios de volumes locais Docker
 postgres_data/
 insta_postgres_data/
+argos_postgres_data/
 
 # ------------------------------------------------------------------------------
 # 6. LOGS & EXPORTAÇÕES / ARQUIVOS GERADOS
@@ -176,3 +178,6 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 .history/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

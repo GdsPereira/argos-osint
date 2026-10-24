@@ -2,7 +2,7 @@
 # Execucao: .\scripts\run_tests.ps1
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  Instagram Analytics Pro - Suite de Verificacao e QA     " -ForegroundColor Cyan
+Write-Host "  Argos OSINT - Suite de Verificacao e QA                 " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $root = (Get-Item "$PSScriptRoot\..").FullName

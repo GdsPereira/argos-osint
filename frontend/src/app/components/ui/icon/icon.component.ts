@@ -10,6 +10,7 @@ export type IconName =
   | 'clock'
   | 'message-square'
   | 'users'
+  | 'user'
   | 'download'
   | 'terminal'
   | 'shield'
@@ -46,6 +47,9 @@ export type IconName =
   | 'award'
   | 'compass'
   | 'zap'
+  | 'network'
+  | 'plus'
+  | 'minus'
   | 'image';
 
 @Component({
@@ -118,6 +122,12 @@ export type IconName =
         <circle cx="9" cy="7" r="4"></circle>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </ng-container>
+
+      <!-- User -->
+      <ng-container *ngIf="name === 'user'">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
       </ng-container>
 
       <!-- Download -->
@@ -347,6 +357,26 @@ export type IconName =
       <!-- Zap -->
       <ng-container *ngIf="name === 'zap'">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </ng-container>
+
+      <!-- Network -->
+      <ng-container *ngIf="name === 'network'">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+      </ng-container>
+
+      <!-- Plus -->
+      <ng-container *ngIf="name === 'plus'">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </ng-container>
+
+      <!-- Minus -->
+      <ng-container *ngIf="name === 'minus'">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
       </ng-container>
 
       <!-- Image -->

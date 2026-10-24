@@ -19,7 +19,7 @@ from typing import Any, Callable, Optional
 
 from apify_client import ApifyClient, ApifyClientAsync
 
-logger = logging.getLogger("insta_analyzer")
+logger = logging.getLogger("argos.collector_apify")
 
 ACTOR_PROFILE_POSTS = os.getenv("APIFY_ACTOR", "apify/instagram-scraper")
 ACTOR_COMMENTS = os.getenv("APIFY_COMMENTS_ACTOR", "apify/instagram-comments-scraper")

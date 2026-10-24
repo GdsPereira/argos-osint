@@ -14,7 +14,7 @@ RUN npm ci --prefer-offline --no-audit
 # Copia todo o código-fonte do frontend
 COPY . .
 
-# Executa o build de produção (gera em dist/insta-analyzer/browser)
+# Executa o build de produção (gera em dist/argos/browser)
 RUN npm run build
 
 # ==========================================
@@ -29,7 +29,7 @@ RUN rm -rf /etc/nginx/conf.d/*
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copia os arquivos compilados do Angular para o diretório padrão do Nginx
-COPY --from=builder /app/dist/insta-analyzer/browser /usr/share/nginx/html
+COPY --from=builder /app/dist/argos/browser /usr/share/nginx/html
 
 # Expõe a porta 80
 EXPOSE 80

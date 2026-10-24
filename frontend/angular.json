@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "insta-analyzer": {
+    "argos": {
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
@@ -12,7 +12,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/insta-analyzer",
+            "outputPath": "dist/argos",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -29,6 +29,14 @@
           },
           "configurations": {
             "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": false
+              },
               "budgets": [
                 { "type": "initial", "maximumWarning": "1.5MB", "maximumError": "3MB" }
               ],
@@ -46,8 +54,8 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": { "proxyConfig": "proxy.conf.json" },
           "configurations": {
-            "production": { "buildTarget": "insta-analyzer:build:production" },
-            "development": { "buildTarget": "insta-analyzer:build:development" }
+            "production": { "buildTarget": "argos:build:production" },
+            "development": { "buildTarget": "argos:build:development" }
           },
           "defaultConfiguration": "development"
         }

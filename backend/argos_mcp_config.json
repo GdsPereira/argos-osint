@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "argos-osint": {
+      "command": "python",
+      "args": [
+        "C:\\Users\\GP\\Documents\\Scripts\\Insta_poc\\backend\\mcp_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}
